@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Native builds run the tests with the hermetic Linux toolchain.
+          - name: Linux / native test
+            slug: linux-native
+            os: ubuntu-latest
+            bazel: test //...
+          # Cross-compile only: the produced binaries can't run on this host.
+          - name: Linux / cross-build to aarch64
+            slug: linux-cross-aarch64
+            os: ubuntu-latest
+            bazel: build --platforms=@llvm//platforms:linux_aarch64 //...
+          - name: macOS / native test
+            slug: macos-native
+            os: macos-latest
+            bazel: test //...
+          - name: macOS / cross-build to linux-x86_64 (glibc)
+            slug: macos-cross-linux-glibc
+            os: macos-latest
+            bazel: build --config=linux //...
+          - name: macOS / cross-build to linux-x86_64 (musl)
+            slug: macos-cross-linux-musl
+            os: macos-latest
+            bazel: build --config=linux-musl //...
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bazel
+        uses: bazel-contrib/setup-bazel@0.19.1
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}-${{ matrix.slug }}
+          repository-cache: true
+          cache-save: ${{ github.event_name != 'pull_request' }}
+
+      - name: bazel ${{ matrix.bazel }}
+        run: bazel ${{ matrix.bazel }}

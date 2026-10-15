@@ -1,6 +1,6 @@
 # llvm
 
-A minimal Bazel project with a C++ "hello world" binary, built with a
+A minimal Bazel project with a C++ library, binary and test, built with a
 **fully hermetic LLVM toolchain** (`llvm` module by
 [hermetic-llvm](https://github.com/hermeticbuild/hermetic-llvm)).
 
@@ -13,12 +13,16 @@ the same outputs on any machine, which also makes remote execution possible.
 
 ```
 llvm
-├── MODULE.bazel          # Bazel module (bzlmod) + hermetic llvm toolchain
-├── .bazelrc              # per-platform output dirs + cross-compile configs
-├── .bazelversion         # Pinned Bazel version
+├── MODULE.bazel              # Bazel module (bzlmod) + hermetic llvm toolchain
+├── .bazelrc                  # per-platform output dirs + cross-compile configs
+├── .bazelversion             # Pinned Bazel version
+├── .github/workflows/ci.yml  # CI matrix (native + cross-compile)
 └── main
-    ├── BUILD             # cc_binary target
-    └── hello-world.cc    # Hello world source
+    ├── BUILD                 # cc_library / cc_binary / cc_test targets
+    ├── greeting.h            # std::string get_greet(const std::string&)
+    ├── greeting.cc
+    ├── greeting_test.cc      # GoogleTest unit tests
+    └── hello-world.cc        # the binary
 ```
 
 > Note: the Bazel *module* is named `hello_llvm`, not `llvm`, because the
@@ -26,12 +30,14 @@ llvm
 > cannot share a name with one of its dependencies. The directory name is
 > unrelated.
 
-## Build & run (native)
+## Build, run & test (native)
 
 ```
 bazel build //main:hello-world
-bazel run //main:hello-world
-bazel run //main:hello-world -- avah
+bazel run   //main:hello-world
+bazel run   //main:hello-world -- avah
+
+bazel test //...
 ```
 
 ## Cross-compile to Linux
@@ -42,21 +48,41 @@ platform's output in its own directory so artifacts don't overwrite each other.
 
 ```
 # glibc (default 2.28), dynamically linked
-bazel build --config=linux //main:hello-world
+bazel build --config=linux //...
 
 # musl, fully statically linked
-bazel build --config=linux-musl //main:hello-world
+bazel build --config=linux-musl //...
 ```
 
 Equivalent explicit form:
 
 ```
-bazel build --platforms=@llvm//platforms:linux_x86_64      //main:hello-world
-bazel build --platforms=@llvm//platforms:linux_x86_64_musl //main:hello-world
+bazel build --platforms=@llvm//platforms:linux_x86_64      //...
+bazel build --platforms=@llvm//platforms:linux_x86_64_musl --dynamic_mode=off //...
 ```
+
+> The musl platform is fully static, so `--dynamic_mode=off` is required when
+> any target links the C++ runtime dynamically (e.g. `cc_test`); otherwise the
+> link fails with `attempted static link of dynamic object libc++.so.1`. The
+> `--config=linux-musl` config already sets this.
 
 Other useful target platforms: `@llvm//platforms:linux_aarch64`,
 `...:linux_x86_64_gnu.2.28` (pin a minimum glibc), `...:linux_aarch64_musl`.
 
 The cross-compiled binaries are Linux ELF files and cannot be run on macOS;
 copy them to a Linux host (or use emulation) to execute.
+
+## CI
+
+`.github/workflows/ci.yml` runs a matrix that exercises the hermetic toolchain:
+
+| Job | Runner | Command |
+| --- | --- | --- |
+| Linux / native test | `ubuntu-latest` | `bazel test //...` |
+| Linux / cross to aarch64 | `ubuntu-latest` | `bazel build --platforms=@llvm//platforms:linux_aarch64 //...` |
+| macOS / native test | `macos-latest` | `bazel test //...` |
+| macOS / cross to x86_64 (glibc) | `macos-latest` | `bazel build --config=linux //...` |
+| macOS / cross to x86_64 (musl) | `macos-latest` | `bazel build --config=linux-musl //...` |
+
+Cross-compiled targets are only *built*, not run, since the resulting Linux
+binaries can't execute on the build host.

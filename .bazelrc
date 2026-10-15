@@ -6,3 +6,7 @@ build --experimental_platform_in_output_dir
 # Convenience configs for cross-compiling from this machine to Linux.
 build:linux      --platforms=@llvm//platforms:linux_x86_64
 build:linux-musl --platforms=@llvm//platforms:linux_x86_64_musl
+# musl targets are fully static, so the C++ runtime must not be linked
+# dynamically (Bazel's `_solib_` path). Without this, cc_test targets fail
+# with "attempted static link of dynamic object libc++.so.1".
+build:linux-musl --dynamic_mode=off
