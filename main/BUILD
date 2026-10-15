@@ -21,3 +21,10 @@ cc_test(
         "@googletest//:gtest_main",
     ],
 )
+
+# Demonstrates consuming the external g3log dependency.
+cc_binary(
+    name = "logging-demo",
+    srcs = ["logging_demo.cc"],
+    deps = ["@g3log//:g3log"],
+)

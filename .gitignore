@@ -1,1 +1,3 @@
 /bazel-*
+# Log files written by g3log's default logger.
+*.g3log.*.log

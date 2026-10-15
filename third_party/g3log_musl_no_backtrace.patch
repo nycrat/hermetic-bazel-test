@@ -1,0 +1,33 @@
+musl does not provide <execinfo.h> or backtrace(), which g3log uses for stack
+traces in its fatal-signal handler. Guard those two uses behind
+G3LOG_DISABLE_BACKTRACE so the library still builds (and yet retains fatal
+signal handling) on musl; the define is only set for musl targets, so this
+patch is a no-op everywhere else.
+
+--- a/src/crashhandler_unix.cpp
++++ b/src/crashhandler_unix.cpp
+@@ -16,7 +16,9 @@
+ #endif
+ 
+ #include <cxxabi.h>
++#if !defined(G3LOG_DISABLE_BACKTRACE)
+ #include <execinfo.h>
++#endif
+ #include <unistd.h>
+ #include <atomic>
+ #include <csignal>
+@@ -139,8 +141,14 @@
+          }
+          const size_t max_dump_size = 50;
+          void* dump[max_dump_size];
++#if !defined(G3LOG_DISABLE_BACKTRACE)
+          const size_t size = backtrace(dump, max_dump_size);
+          char** messages = backtrace_symbols(dump, static_cast<int>(size));  // overwrite sigaction with caller's address
++#else
++         static_cast<void>(dump);
++         const size_t size = 0;
++         char** messages = nullptr;
++#endif
+ 
+          // dump stack: skip first frame, since that is here
+          std::ostringstream oss;

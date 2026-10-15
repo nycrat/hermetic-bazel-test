@@ -13,16 +13,21 @@ the same outputs on any machine, which also makes remote execution possible.
 
 ```
 llvm
-├── MODULE.bazel              # Bazel module (bzlmod) + hermetic llvm toolchain
+├── MODULE.bazel              # Bazel module (bzlmod), hermetic toolchain + deps
 ├── .bazelrc                  # per-platform output dirs + cross-compile configs
 ├── .bazelversion             # Pinned Bazel version
 ├── .github/workflows/ci.yml  # CI matrix (native + cross-compile)
+├── third_party
+│   ├── BUILD.bazel           # exports the g3log BUILD file + patch
+│   ├── g3log.BUILD           # Bazel BUILD for the g3log external repo
+│   └── g3log_musl_no_backtrace.patch
 └── main
     ├── BUILD                 # cc_library / cc_binary / cc_test targets
     ├── greeting.h            # std::string get_greet(const std::string&)
     ├── greeting.cc
     ├── greeting_test.cc      # GoogleTest unit tests
-    └── hello-world.cc        # the binary
+    ├── hello-world.cc        # the binary
+    └── logging_demo.cc       # g3log usage demo
 ```
 
 > Note: the Bazel *module* is named `hello_llvm`, not `llvm`, because the
@@ -38,6 +43,29 @@ bazel run   //main:hello-world
 bazel run   //main:hello-world -- avah
 
 bazel test //...
+```
+
+## Dependencies
+
+- **googletest** (Bazel Central Registry) — the unit tests.
+- **g3log** (v2.6.1) — asynchronous logging.
+
+g3log is *not* in the Bazel Central Registry and ships no Bazel support, so
+`MODULE.bazel` fetches the release tarball and builds it with
+`third_party/g3log.BUILD`. That file reproduces g3log's CMake build: it
+generates the `g3log/generated_definitions.hpp` header that CMake normally
+writes into the build tree, and compiles the non-Windows sources.
+
+A small patch (`third_party/g3log_musl_no_backtrace.patch`) guards g3log's use
+of `<execinfo.h>`/`backtrace()` behind `G3LOG_DISABLE_BACKTRACE`, which is set
+only for musl targets (musl has no `backtrace()`). The patch is a no-op
+everywhere else, so fatal-signal handling keeps its stack traces on
+macOS/glibc.
+
+Run the demo (logs to stdout via a custom sink):
+
+```
+bazel run //main:logging-demo
 ```
 
 ## Cross-compile to Linux

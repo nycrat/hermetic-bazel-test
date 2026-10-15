@@ -8,3 +8,17 @@ bazel_dep(name = "googletest", version = "1.17.0.bcr.2")
 bazel_dep(name = "llvm", version = "0.8.21")
 
 register_toolchains("@llvm//toolchain:all")
+
+# g3log is not in the Bazel Central Registry and ships no BUILD file, so fetch
+# the release tarball and build it with the BUILD file in //third_party.
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "g3log",
+    build_file = "//third_party:g3log.BUILD",
+    patch_args = ["-p1"],
+    patches = ["//third_party:g3log_musl_no_backtrace.patch"],
+    sha256 = "65cb6e56e7757221fd4f3f6e97a47834cacf45288010f8fa2b192272eaa63637",
+    strip_prefix = "g3log-2.6.1",
+    urls = ["https://github.com/KjellKod/g3log/archive/refs/tags/2.6.1.tar.gz"],
+)

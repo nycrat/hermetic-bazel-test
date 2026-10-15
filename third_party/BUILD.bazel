@@ -1,0 +1,4 @@
+exports_files([
+    "g3log.BUILD",
+    "g3log_musl_no_backtrace.patch",
+])
