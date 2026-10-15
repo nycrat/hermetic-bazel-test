@@ -1,0 +1,8 @@
+# Keep per-target-platform output directories distinct and host-independent.
+# Without this, every cross-compiled target reuses `bazel-out/<host-cpu>-...`
+# and artifacts silently overwrite each other.
+build --experimental_platform_in_output_dir
+
+# Convenience configs for cross-compiling from this machine to Linux.
+build:linux      --platforms=@llvm//platforms:linux_x86_64
+build:linux-musl --platforms=@llvm//platforms:linux_x86_64_musl
