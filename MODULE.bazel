@@ -22,3 +22,13 @@ http_archive(
     strip_prefix = "g3log-2.6.1",
     urls = ["https://github.com/KjellKod/g3log/archive/refs/tags/2.6.1.tar.gz"],
 )
+
+# Bullet Physics SDK, pinned to a specific revision. It has no Bazel support,
+# so it is built with //third_party/bullet3.BUILD.
+http_archive(
+    name = "bullet3",
+    build_file = "//third_party:bullet3.BUILD",
+    sha256 = "0af974ece80e528182ac47a0c0b1506b5aeeb570fdb7d4fd7044efe67babc7a1",
+    strip_prefix = "bullet3-272c7099d3ba8ac9e8c142e361e8d4cf5d91b8f2",
+    urls = ["https://github.com/bulletphysics/bullet3/archive/272c7099d3ba8ac9e8c142e361e8d4cf5d91b8f2.tar.gz"],
+)

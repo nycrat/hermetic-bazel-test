@@ -18,7 +18,8 @@ llvm
 ├── .bazelversion             # Pinned Bazel version
 ├── .github/workflows/ci.yml  # CI matrix (native + cross-compile)
 ├── third_party
-│   ├── BUILD.bazel           # exports the g3log BUILD file + patch
+│   ├── BUILD.bazel           # exports vendored BUILD files + patch
+│   ├── bullet3.BUILD          # Bazel BUILD for the bullet3 external repo
 │   ├── g3log.BUILD           # Bazel BUILD for the g3log external repo
 │   └── g3log_musl_no_backtrace.patch
 └── main
@@ -27,7 +28,8 @@ llvm
     ├── greeting.cc
     ├── greeting_test.cc      # GoogleTest unit tests
     ├── hello-world.cc        # the binary
-    └── logging_demo.cc       # g3log usage demo
+    ├── logging_demo.cc       # g3log usage demo
+    └── bullet_demo.cc        # Bullet Physics example
 ```
 
 > Note: the Bazel *module* is named `hello_llvm`, not `llvm`, because the
@@ -49,6 +51,7 @@ bazel test //...
 
 - **googletest** (Bazel Central Registry) — the unit tests.
 - **g3log** (v2.6.1) — asynchronous logging.
+- **Bullet Physics SDK** (`bullet3`, revision `272c7099`) — rigid-body physics.
 
 g3log is *not* in the Bazel Central Registry and ships no Bazel support, so
 `MODULE.bazel` fetches the release tarball and builds it with
@@ -66,6 +69,29 @@ Run the demo (logs to stdout via a custom sink):
 
 ```
 bazel run //main:logging-demo
+```
+
+Bullet is likewise not in the BCR and has no Bazel support, so `MODULE.bazel`
+pins the source tarball and `third_party/bullet3.BUILD` mirrors its CMake
+library layout: `LinearMath`, `BulletCollision`, `BulletDynamics`,
+`BulletSoftBody`, `Bullet3Common`, `BulletInverseDynamics`, `Bullet3Geometry`,
+`Bullet3Collision`, `Bullet3Dynamics` and `Bullet2FileLoader`, plus a `bullet`
+umbrella target. Depend on `@bullet3//:bullet` (or an individual component) and
+`#include <btBulletDynamicsCommon.h>`.
+
+```
+bazel build @bullet3//...
+```
+
+`Bullet3OpenCL`, `Extras/` and `examples/` are intentionally not built. The
+defaults match upstream CMake (single precision, no multithreading); pass
+`--copt=-DBT_USE_DOUBLE_PRECISION` to build with doubles.
+
+Run the example (a sphere falls onto a static ground plane; it prints the height
+at intervals and settles at `1.0`, the sphere's radius):
+
+```
+bazel run //main:bullet-demo
 ```
 
 ## Cross-compile to Linux

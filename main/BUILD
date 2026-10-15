@@ -28,3 +28,10 @@ cc_binary(
     srcs = ["logging_demo.cc"],
     deps = ["@g3log//:g3log"],
 )
+
+# A minimal Bullet Physics example: a sphere falls onto a static ground plane.
+cc_binary(
+    name = "bullet-demo",
+    srcs = ["bullet_demo.cc"],
+    deps = ["@bullet3//:bullet"],
+)
